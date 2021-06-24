@@ -760,7 +760,7 @@ livenessProbe:
   failureThreshold: 5
 ```
 
-- port 및 path 잘못된 값으로 변경 후, retry 시도 확인 (in booking 서비스)  
+- port 및 path 잘못된 값으로 변경 후, retry 시도 확인 
     - vote deploy yml 수정  
         ![selfhealing(liveness)-세팅변경]
         ```yml
