@@ -345,7 +345,8 @@ election 서비스의 ElectionController.java
 
 vote 서비스의 ElectionService.java
 ```java
-@FeignClient(name="election", url="http://${api.url.election}:8080")
+
+@FeignClient(name="election", url="http://${api.url.election}")
 public interface ElectionService {
 
     @RequestMapping(method= RequestMethod.GET, path="/elections/canVote")
@@ -542,3 +543,94 @@ spec:
 
 - deploy 완료(istio 부착기준)
 ![K8S-ALL](https://user-images.githubusercontent.com/2360083/123210632-3bcc6f00-d4fd-11eb-98a2-488efe3fe140.png)
+
+## Config Map
+
+- 변경 가능성이 있는 설정을 ConfigMap을 사용하여 관리  
+  - vote 서비스에서 바라보는 election 서비스 url 일부분을 ConfigMap 사용하여 구현​  
+
+- vote 서비스 내 FeignClient (vote/src/main/java/omp/external/ElectionService.java)
+```java
+@FeignClient(name="election", url="http://${api.url.election}")
+public interface ElectionService {
+
+    @RequestMapping(method= RequestMethod.GET, path="/elections/canVote")
+    public boolean canVote(@RequestParam Long electionId);
+
+}
+```
+
+- vote 서비스 application.yml
+```yml
+api: 
+  url: 
+    election: ${election-url}
+```
+- vote 서비스 configmap.yml
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vote-configmap
+  namespace: omp
+data:
+  election-url: election:8080
+```
+
+- vote 서비스 deployment.yml
+```yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote
+  namespace: omp
+  -- 생략 --
+spec:
+  -- 생략 --
+  template:
+    spec:
+      containers:
+        - name: vote
+          env:
+            - name: ELECTION-URL
+              valueFrom:
+                configMapKeyRef:
+                  name: vote-configmap
+                  key: election-url        
+  -- 생략 --
+```
+## Autoscale (HPA)
+
+  앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다. 
+
+- vote 서비스에 리소스 사용량을 정의한다.
+<code>vote/kubernetes/deployment.yml</code>
+
+```yml
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "250m"
+    limits:
+      memory: "500Mi"
+      cpu: "500m"
+```
+
+- vote 서비스에 대한 replica 를 동적으로 늘려주도록 HPA 를 설정한다. 설정은 CPU 사용량이 15프로를 넘어서면 replica 를 10개까지 늘려준다:
+
+```sh
+kubectl autoscale deploy vote --min=1 --max=10 --cpu-percent=15 -n omp
+```
+
+![HPA](https://user-images.githubusercontent.com/2360083/123212113-543d8900-d4ff-11eb-8822-0b2538c82283.png)
+
+- siege 워크로드를 걸어준다.
+```sh
+$ siege -c200 -t10S -v --content-type "application/json" 'http://vote:8080/votes POST { "electionId": 1, "candidateId": 8, "voterId" : 1 }'
+```
+
+- 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다:
+
+```sh
+$ watch kubectl get all
+```
