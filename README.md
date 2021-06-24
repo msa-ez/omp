@@ -599,6 +599,63 @@ spec:
                   key: election-url        
   -- 생략 --
 ```
+## Persistence Volume
+  
+PVC 생성 파일
+
+<code>vote-pvc.yml</code>
+- AccessModes: **ReadWriteMany**
+- storeageClass: **azurefile**
+```yml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vote-disk
+  namespace: omp
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: azurefile
+  resources:
+    requests:
+      storage: 1Gi
+```
+deploymeny.yml
+```yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote
+  namespace: omp
+  labels:
+    app: vote
+spec:
+  replicas: 1
+  -- 생략 --
+  template:
+  -- 생략 --
+    spec:
+      containers:
+        - name: vote
+        -- 생략 --
+          volumeMounts:
+            - name: volume
+              mountPath: "/mnt/azure"
+      volumes:
+      - name: volume
+        persistentVolumeClaim:
+          claimName: vote-disk
+```
+<code>application.yml</code>
+```yml
+logging:
+  level:
+    root: info
+  file: /mnt/azure/logs/vote.log
+```
+- 로그 확인
+![PVC-LOGS](https://user-images.githubusercontent.com/2360083/123215041-e6935c00-d502-11eb-88d6-5961b6116a00.png)
+
 ## Autoscale (HPA)
 
   앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다. 
@@ -622,7 +679,7 @@ spec:
 kubectl autoscale deploy vote --min=1 --max=10 --cpu-percent=15 -n omp
 ```
 
-![HPA](https://user-images.githubusercontent.com/2360083/123212113-543d8900-d4ff-11eb-8822-0b2538c82283.png)
+![HPA](https://user-images.githubusercontent.com/2360083/123215444-66b9c180-d503-11eb-8103-7cc99600121d.png)
 
 - siege 워크로드를 걸어준다.
 ```sh
@@ -634,3 +691,89 @@ $ siege -c200 -t10S -v --content-type "application/json" 'http://vote:8080/votes
 ```sh
 $ watch kubectl get all
 ```
+- 부하테스트 후 CPU 15% 이상 사용시 POD개수가 추가 됨을 확인 할수 있다.
+![AUTOSCALE](https://user-images.githubusercontent.com/2360083/123215656-af717a80-d503-11eb-852e-c306161a23f9.png)
+
+
+## Circuit Breaker
+
+  * 서킷 브레이킹 프레임워크의 선택: Istio를 설치하여, omp namespace에 
+  Virtual Service의 Timeout을 설정하여 구현함
+
+vote 요청이 과도 하게 몰리는 경우, 3초 이상 지연이 되는 요청을 차단 하여 장애 격리.
+
+- Virtual Service 생성(Timeout 3s)
+- omp/vote/kubernetes/virtual-service.yml
+
+```yml
+  apiVersion: networking.istio.io/v1alpha3
+  kind: VirtualService
+  metadata:
+    name: vs-vote-network-rule
+    namespace: omp
+  spec:
+    hosts:
+    - vote
+    http:
+    - route:
+      - destination:
+          host: vote
+      timeout: 3s
+```
+- 다음과 같이 3초 이상의 요청에 대해 504 에러를 발생 시키며 차단함을 알수 있다.
+![TIMEOUT](https://user-images.githubusercontent.com/2360083/123216418-7ab1f300-d504-11eb-9439-52b1c1c195b5.png)
+
+## Zero-Downtime deploy (Readiness Probe)
+
+- deployment.yml에 정상 적용되어 있는 readinessProbe  
+```yml
+readinessProbe:
+  httpGet:
+    path: '/actuator/health'
+    port: 8080
+  initialDelaySeconds: 10
+  timeoutSeconds: 2
+  periodSeconds: 5
+  failureThreshold: 10
+```
+
+- deployment.yml에서 readiness 설정 제거 후, 배포중 siege 테스트 진행  
+- 실제 LOG 구동이 완료 되지 않았음에도 완료로 인식하여, 요청 전송이 일어나 503(Service Unavailable)에러가 발생
+
+![UNREADINESS](https://user-images.githubusercontent.com/2360083/123219129-7fc47180-d507-11eb-99fd-1bff37666b5d.png)
+
+- READNINESS 적용시 HPA에 의해 Pod이 추가되도, 요청이가지 않아 100%요청 성공율을 보인다.
+![READINESS](https://user-images.githubusercontent.com/2360083/123220231-b51d8f00-d508-11eb-9e2d-81a4962e06d8.png)
+
+
+## Self-healing (Liveness Probe)
+
+- deployment.yml에 정상 적용되어 있는 livenessProbe 
+```yml
+livenessProbe:
+  httpGet:
+    path: '/actuator/health'
+    port: 8080
+  initialDelaySeconds: 120
+  timeoutSeconds: 2
+  periodSeconds: 5
+  failureThreshold: 5
+```
+
+- port 및 path 잘못된 값으로 변경 후, retry 시도 확인 (in booking 서비스)  
+    - vote deploy yml 수정  
+        ![selfhealing(liveness)-세팅변경]
+        ```yml
+          livenessProbe:
+            httpGet:
+              path: '/actuator/failed'
+              port: 8888
+            initialDelaySeconds: 120
+            timeoutSeconds: 2
+            periodSeconds: 5
+            failureThreshold: 5
+        ```
+
+    - 정상적인 구동임에도 불구하고 지속적인 retry 시도 확인  
+    ![image](https://user-images.githubusercontent.com/2360083/123221552-08441180-d50a-11eb-873e-165653f28ccf.png)
+    ![RESTART_LOG](https://user-images.githubusercontent.com/2360083/123221283-c024ef00-d509-11eb-84e1-b32915b017cc.png)
