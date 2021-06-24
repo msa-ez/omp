@@ -324,7 +324,7 @@ election 서비스의 ElectionController.java
     @RequestMapping(value = "elections/canVote",
         method = RequestMethod.GET,
         produces = "application/json;charset=UTF-8")
-    public boolean checkAndBookStock(HttpServletRequest request, HttpServletResponse response) {{
+    public boolean canVote(HttpServletRequest request, HttpServletResponse response) {{
         System.out.println("##### /elections/canVote  called #####");
 
         Long electionId = Long.valueOf(request.getParameter("electionId"));
