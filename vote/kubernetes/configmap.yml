@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: vote-configmap
 data:
-  election-url: election
+  election-url: election:8080

@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Date;
 
-@FeignClient(name="election", url="http://${api.url.election}:8080")
+@FeignClient(name="election", url="http://${api.url.election}")
 public interface ElectionService {
 
     @RequestMapping(method= RequestMethod.GET, path="/elections/canVote")
-    public void canVote(@RequestParam Long electionId);
+    public boolean canVote(@RequestParam Long electionId);
 
 }

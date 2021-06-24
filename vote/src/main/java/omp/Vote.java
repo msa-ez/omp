@@ -6,40 +6,44 @@ import java.util.List;
 import java.util.Date;
 
 @Entity
-@Table(name="Vote_table")
+@Table(name="Vote")
 public class Vote {
 
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
+    private Long electionId;
     private Long candidateId;
     private String voterId;
     private Date votingDate;
 
     @PostPersist
-    public void onPostPersist(){
-        Voted voted = new Voted();
-        BeanUtils.copyProperties(this, voted);
-        voted.publishAfterCommit();
+    public void onPostPersist() throws Exception {
 
-        //Following code causes dependency to external APIs
-        // it is NOT A GOOD PRACTICE. instead, Event-Policy mapping is recommended.
-
-        omp.external.Election election = new omp.external.Election();
-        // mappings goes here
-        VoteApplication.applicationContext.getBean(omp.external.ElectionService.class)
-            .canVote(election);
+        // 선거 가능 기간 여부 확인
+        if(VoteApplication.applicationContext.getBean(omp.external.ElectionService.class)
+            .canVote(electionId)){
+                Voted voted = new Voted();
+                BeanUtils.copyProperties(this, voted);
+                voted.publishAfterCommit();
+            }else{
+                throw new Exception("Not Voting Day.");
+            }
 
 
     }
-
-
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+    public Long getElectionId() {
+        return electionId;
+    }
+    public void setElectionId(Long electionId) {
+        this.electionId = electionId;
     }
     public Long getCandidateId() {
         return candidateId;
@@ -62,8 +66,4 @@ public class Vote {
     public void setVotingDate(Date votingDate) {
         this.votingDate = votingDate;
     }
-
-
-
-
 }
