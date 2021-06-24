@@ -1,9 +1,12 @@
 package omp.external;
 
+import java.util.Date;
+
 public class Election {
 
     private Long id;
     private String name;
+    private Long electionId;
     private Date votingDay;
     private Integer votingPeriod;
 

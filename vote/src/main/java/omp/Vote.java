@@ -27,7 +27,7 @@ public class Vote {
 
         omp.external.Election election = new omp.external.Election();
         // mappings goes here
-        Application.applicationContext.getBean(omp.external.ElectionService.class)
+        VoteApplication.applicationContext.getBean(omp.external.ElectionService.class)
             .canVote(election);
 
 

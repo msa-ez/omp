@@ -1,6 +1,9 @@
 package omp;
 
 import omp.config.kafka.KafkaProcessor;
+
+import java.util.Optional;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,9 +22,12 @@ public class PolicyHandler{
 
         System.out.println("\n\n##### listener CampaignCounting : " + campaignCreated.toJson() + "\n\n");
 
-        // Sample Logic //
-        Candidate candidate = new Candidate();
-        candidateRepository.save(candidate);
+        Optional<Candidate> candidate = candidateRepository.findById(campaignCreated.getCanditateId());
+        if(candidate.isPresent()){
+            Candidate candidateValue = candidate.get();
+            candidateValue.increaseCampaigns();
+            candidateRepository.save(candidateValue);
+        }
             
     }
     @StreamListener(KafkaProcessor.INPUT)
@@ -31,10 +37,12 @@ public class PolicyHandler{
 
         System.out.println("\n\n##### listener CampaignCounting : " + campaignDeleted.toJson() + "\n\n");
 
-        // Sample Logic //
-        Candidate candidate = new Candidate();
-        candidateRepository.save(candidate);
-            
+        Optional<Candidate> candidate = candidateRepository.findById(campaignDeleted.getCanditateId());
+        if(candidate.isPresent()){
+            Candidate candidateValue = candidate.get();
+            candidateValue.decreaseCampaigns();
+            candidateRepository.save(candidateValue);
+        }
     }
 
 

@@ -1,6 +1,9 @@
 package omp;
 
 import omp.config.kafka.KafkaProcessor;
+
+import java.util.List;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,9 +22,10 @@ public class PolicyHandler{
 
         System.out.println("\n\n##### listener DeleteCanditate : " + candidateDeleted.toJson() + "\n\n");
 
-        // Sample Logic //
-        Campaign campaign = new Campaign();
-        campaignRepository.save(campaign);
+        List<Campaign> campaigns = campaignRepository.findByCanditateId(candidateDeleted.getId());
+        campaigns.forEach(campaign -> {
+            campaignRepository.delete(campaign);
+        });
             
     }
 

@@ -82,6 +82,16 @@ public class Candidate {
     }
 
 
+    public void increaseCampaigns(){
+        if(this.campaigns == null) this.campaigns = 0;
+        this.setCampaigns(campaigns + 1);
+    }
+
+    public void decreaseCampaigns(){
+        if(this.campaigns == null) this.campaigns = 0;
+        int value = this.campaigns - 1;
+        this.setCampaigns(value < 0 ? 0 : value);
+    }
 
 
 }
