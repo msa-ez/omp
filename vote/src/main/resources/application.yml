@@ -37,6 +37,9 @@ logging:
     org.springframework.cloud: debug
 server:
   port: 8084
+api: 
+  url: 
+    election: localhost:8081
 ---
 
 spring:
@@ -62,3 +65,10 @@ spring:
         event-out:
           destination: omp
           contentType: application/json
+logging:
+  level:
+    root: info
+  file: /mnt/azure/logs/vote.log
+api: 
+  url: 
+    election: ${election-url}

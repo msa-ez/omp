@@ -62,3 +62,7 @@ spring:
         event-out:
           destination: omp
           contentType: application/json
+logging:
+  level:
+    root: info
+  file: /mnt/azure/logs/candidate.log

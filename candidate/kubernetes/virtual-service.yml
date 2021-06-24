@@ -1,0 +1,13 @@
+  apiVersion: networking.istio.io/v1alpha3
+  kind: VirtualService
+  metadata:
+    name: vs-candidate-network-rule
+    namespace: omp
+  spec:
+    hosts:
+    - candidate
+    http:
+    - route:
+      - destination:
+          host: candidate
+      timeout: 3s

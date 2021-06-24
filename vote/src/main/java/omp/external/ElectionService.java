@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.util.Date;
 
-@FeignClient(name="election", url="http://election:8080")
+@FeignClient(name="election", url="http://${api.url.election}:8080")
 public interface ElectionService {
 
     @RequestMapping(method= RequestMethod.GET, path="/elections")
