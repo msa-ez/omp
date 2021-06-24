@@ -20,6 +20,12 @@ spec:
           image: skccomp.azurecr.io/vote:latest
           ports:
             - containerPort: 8080
+          env:
+            - name: ELECTION-URL
+              valueFrom:
+                configMapKeyRef:
+                  name: vote-configmap
+                  key: election-url            
           readinessProbe:
             httpGet:
               path: '/actuator/health'
