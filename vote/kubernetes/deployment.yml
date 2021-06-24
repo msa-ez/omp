@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: vote
-          image: username/vote:latest
+          image: image: skccomp.azurecr.io/vote:latest
           ports:
             - containerPort: 8080
           readinessProbe:

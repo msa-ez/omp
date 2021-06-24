@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: campaign
-          image: username/campaign:latest
+          image: skccomp.azurecr.io/campaign:latest
           ports:
             - containerPort: 8080
           readinessProbe:
