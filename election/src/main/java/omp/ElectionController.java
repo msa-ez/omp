@@ -33,7 +33,7 @@ import java.util.Optional;
             LocalDate now = LocalDate.now();
             LocalDate startDate = electionValue.getVotingDay().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
             LocalDate endDate = startDate.plusDays(electionValue.getVotingPeriod());
-            if(startDate.isAfter(now) && endDate.isBefore(now)) return true;
+            if(now.isAfter(startDate) && now.isBefore(endDate)) return true;
             return false;
         }else{
             return false;
