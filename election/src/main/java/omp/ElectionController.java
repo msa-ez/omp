@@ -23,7 +23,7 @@ import java.util.Optional;
     @RequestMapping(value = "elections/canVote",
         method = RequestMethod.GET,
         produces = "application/json;charset=UTF-8")
-    public boolean checkAndBookStock(HttpServletRequest request, HttpServletResponse response) {{
+    public boolean checkAndBookStock(HttpServletRequest request, HttpServletResponse response) {
         System.out.println("##### /elections/canVote  called #####");
 
         Long electionId = Long.valueOf(request.getParameter("electionId"));
@@ -38,6 +38,6 @@ import java.util.Optional;
         }else{
             return false;
         }
+    
     }
-
  }
