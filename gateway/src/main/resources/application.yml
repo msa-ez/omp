@@ -1,0 +1,82 @@
+server:
+  port: 8088
+
+---
+
+spring:
+  profiles: default
+  cloud:
+    gateway:
+      routes:
+        - id: election
+          uri: http://localhost:8081
+          predicates:
+            - Path=/elections/** 
+        - id: candidate
+          uri: http://localhost:8082
+          predicates:
+            - Path=/candidates/** 
+        - id: campaign
+          uri: http://localhost:8083
+          predicates:
+            - Path=/campaigns/** 
+        - id: vote
+          uri: http://localhost:8084
+          predicates:
+            - Path=/votes/** 
+        - id: dashboard
+          uri: http://localhost:8085
+          predicates:
+            - Path= /myVotes/**/candidateVotes/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+
+---
+
+spring:
+  profiles: docker
+  cloud:
+    gateway:
+      routes:
+        - id: election
+          uri: http://election:8080
+          predicates:
+            - Path=/elections/** 
+        - id: candidate
+          uri: http://candidate:8080
+          predicates:
+            - Path=/candidates/** 
+        - id: campaign
+          uri: http://campaign:8080
+          predicates:
+            - Path=/campaigns/** 
+        - id: vote
+          uri: http://vote:8080
+          predicates:
+            - Path=/votes/** 
+        - id: dashboard
+          uri: http://dashboard:8080
+          predicates:
+            - Path= /myVotes/**/candidateVotes/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+server:
+  port: 8080
