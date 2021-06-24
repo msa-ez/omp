@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: candidate
+  namespace: omp
   labels:
     app: candidate
 spec:
