@@ -334,7 +334,7 @@ election 서비스의 ElectionController.java
             LocalDate now = LocalDate.now();
             LocalDate startDate = electionValue.getVotingDay().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
             LocalDate endDate = startDate.plusDays(electionValue.getVotingPeriod());
-            if(startDate.isAfter(now) && endDate.isBefore(now)) return true;
+            if(now.isAfter(startDate) && now.isBefore(endDate)) return true;
             return false;
         }else{
             return false;
@@ -388,3 +388,157 @@ public class Vote {
 }
 
 ```
+동작 확인
+
+투표시 투표 가능 일정 내에 요청되었는지 체크하며,
+투표일 내에 투표가 진행 되면, 투표 가능
+![VOTE-SUCCESS](https://user-images.githubusercontent.com/2360083/123208833-b647bf80-d4fa-11eb-8e3c-335e4435f163.png)
+
+투표 가능일 내에 투표 요청이 진행되면 투표 되지 않음.
+![VOTE-FAILED](https://user-images.githubusercontent.com/2360083/123208954-e5f6c780-d4fa-11eb-8f99-9968751e1ace.png)
+
+EXCEPTION LOGS
+![VOTE-FAILED-EXCEPTION](https://user-images.githubusercontent.com/2360083/123209084-12aadf00-d4fb-11eb-8c18-361d7dedcafe.png)
+
+
+# 운영
+  
+## Deploy/ Pipeline
+각 구현체들은 각자의 source repository 에 구성되었고, 사용한 CI/CD 플랫폼은 Azure를 사용하였으며, pipeline build script 는 각 프로젝트 폴더 이하에 cloudbuild.yml 에 포함되었다.
+
+- git에서 소스 가져오기
+
+```
+git clone https://github.com/hansuky/omp.git
+```
+
+- Build 및 ACR 에 Docker Build/Push 하기
+
+```bash
+cd /omp
+cd gateway
+mvn package
+az acr build --registry skccomp --image skccomp.azurecr.io/gateway:latest .
+
+cd ..
+cd candidate
+mvn package
+az acr build --registry skccomp --image skccomp.azurecr.io/candidate:latest .
+
+cd ..
+cd campaign
+mvn package
+az acr build --registry skccomp --image skccomp.azurecr.io/campaign:latest .
+
+cd ..
+cd vote
+mvn package
+az acr build --registry skccomp --image skccomp.azurecr.io/vote:latest .
+
+cd ..
+cd dashboard
+mvn package
+az acr build --registry skccomp --image skccomp.azurecr.io/dashboard:latest .
+
+cd ..
+cd gateway
+mvn package
+az acr build --registry skccomp --image skccomp.azurecr.io/gateway:latest .
+```
+
+- Kubernetes Deploy, SVC 생성(yml 이용)
+
+```sh
+-- 기본 namespace 설정
+kubectl config set-context --current --namespace=omp
+
+-- namespace 생성
+kubectl create ns omp
+
+cd kubernetes
+kubectl apply -f ./kubernetes/deployment.yml
+kubectl apply -f ./kubernetes/service.yaml
+
+cd ..
+cd election
+kubectl apply -f ./kubernetes/pvc.yml
+kubectl apply -f ./kubernetes/service.yaml
+kubectl apply -f ./kubernetes/virtual-service.yaml
+kubectl apply -f ./kubernetes/deployment.yml
+
+cd ..
+cd candidate
+kubectl apply -f ./kubernetes/pvc.yml
+kubectl apply -f ./kubernetes/service.yaml
+kubectl apply -f ./kubernetes/virtual-service.yaml
+kubectl apply -f ./kubernetes/deployment.yml
+
+cd ..
+cd campaign
+kubectl apply -f ./kubernetes/pvc.yml
+kubectl apply -f ./kubernetes/service.yaml
+kubectl apply -f ./kubernetes/virtual-service.yaml
+kubectl apply -f ./kubernetes/deployment.yml
+
+cd ..
+cd vote
+kubectl apply -f ./kubernetes/configmap.yml
+kubectl apply -f ./kubernetes/pvc.yml
+kubectl apply -f ./kubernetes/service.yaml
+kubectl apply -f ./kubernetes/virtual-service.yaml
+kubectl apply -f ./kubernetes/deployment.yml
+
+cd ..
+cd dashboard
+kubectl apply -f ./kubernetes/pvc.yml
+kubectl apply -f ./kubernetes/service.yaml
+kubectl apply -f ./kubernetes/virtual-service.yaml
+kubectl apply -f ./kubernetes/deployment.yml
+```
+
+- omp/gateway/kubernetes/deployment.yml 파일 
+```yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: omp
+  labels:
+    app: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      containers:
+        - name: gateway
+          image: skccomp.azurecr.io/gateway:latest
+          ports:
+            - containerPort: 8080
+```
+
+- omp/gateway/kubernetes/service.yaml 파일 
+```yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: omp
+  labels:
+    app: gateway
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: LoadBalancer
+  selector:
+    app: gateway
+```
+
+- deploy 완료(istio 부착기준)
+![K8S-ALL](https://user-images.githubusercontent.com/2360083/123210632-3bcc6f00-d4fd-11eb-98a2-488efe3fe140.png)
