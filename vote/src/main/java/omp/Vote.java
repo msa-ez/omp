@@ -17,6 +17,11 @@ public class Vote {
     private String voterId;
     private Date votingDate;
 
+    @PrePersist
+    public void onPrePersist(){
+        if(this.getVotingDate() == null) this.setVotingDate(new Date());
+    }
+
     @PostPersist
     public void onPostPersist() throws Exception {
 

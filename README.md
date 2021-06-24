@@ -132,82 +132,6 @@ mvn spring-boot:run
 msaez.io 를 통해 구현한 Aggregate 단위로 Entity 를 선언 후, 구현을 진행하였다.
 Entity Pattern 과 Repository Pattern을 적용하기 위해 Spring Data REST 의 RestRepository 를 적용하였다.
 
-election 서비스의 ElectionController.java
-```java
- @RestController
- public class ElectionController {
-
-    @Autowired
-    ElectionRepository electionRepository;
-
-    @RequestMapping(value = "elections/canVote",
-        method = RequestMethod.GET,
-        produces = "application/json;charset=UTF-8")
-    public boolean checkAndBookStock(HttpServletRequest request, HttpServletResponse response) {{
-        System.out.println("##### /elections/canVote  called #####");
-
-        Long electionId = Long.valueOf(request.getParameter("electionId"));
-        Optional<Election> election = electionRepository.findById(electionId);
-        if(election.isPresent()){
-            Election electionValue = election.get();
-            LocalDate now = LocalDate.now();
-            LocalDate startDate = electionValue.getVotingDay().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            LocalDate endDate = startDate.plusDays(electionValue.getVotingPeriod());
-            if(startDate.isAfter(now) && endDate.isBefore(now)) return true;
-            return false;
-        }else{
-            return false;
-        }
-    }
-
- }
-
-vote 서비스의 ElectionService.java
-```java
-@FeignClient(name="election", url="http://${api.url.election}:8080")
-public interface ElectionService {
-
-    @RequestMapping(method= RequestMethod.GET, path="/elections/canVote")
-    public boolean canVote(@RequestParam Long electionId);
-
-}
-```
-
-vote 서비스의 Vote.java
-
-```java
-@Entity
-@Table(name="Vote")
-public class Vote {
-
-    @Id
-    @GeneratedValue(strategy=GenerationType.AUTO)
-    private Long id;
-    private Long electionId;
-    private Long candidateId;
-    private String voterId;
-    private Date votingDate;
-
-    @PostPersist
-    public void onPostPersist() throws Exception {
-
-        // 선거 가능 기간 여부 확인
-        if(VoteApplication.applicationContext.getBean(omp.external.ElectionService.class)
-            .canVote(electionId)){
-                Voted voted = new Voted();
-                BeanUtils.copyProperties(this, voted);
-                voted.publishAfterCommit();
-            }else{
-                throw new Exception("Not Voting Day.");
-            }
-
-
-    }
-    /** 생략 **/
-}
-
-```
-
 candidate 서비스의 PolicyHandler.java
 
 ```Java
@@ -363,4 +287,104 @@ spring:
 
 server:
   port: 8080
+```
+## CQRS
+타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이) 도 내 서비스의 화면 구성과 잦은 조회가 가능하게 구현해 두었다.
+본 프로젝트에서 View 역할은 dashboard 서비스가 수행한다.
+
+후보자 생성 후 dashboard/candidateVotes
+ 
+![DASHBOARD-CQRS](https://user-images.githubusercontent.com/2360083/123205990-cc06b600-d4f5-11eb-9567-f404ed5a43e8.png)
+
+## 폴리글랏 퍼시스턴스
+dashboard 서비스의 DB와 Election/Candidate/Campaign/Vote 서비스의 DB를 다른 DB를 사용하여 MSA간 서로 다른 종류의 DB간에도 문제 없이 동작하여 다형성을 만족하는지 확인하였다.
+(폴리글랏을 만족)
+
+|서비스|DB|pom.xml|
+| :--: | :--: | :--: |
+|election| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
+|candidate| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
+|campaign| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
+|vote| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
+|dashboard| HSQL |![image](https://user-images.githubusercontent.com/2360083/120982836-1842be00-c7b4-11eb-91de-ab01170133fd.png)|
+
+
+## 동기식 호출과 Fallback 처리
+분석단계에서의 조건 중 하나로 투표자 투표 기간내에만 투표가 가능하며,
+투표(vote) -> 선거(election) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리한다.
+호출 프로토콜은 Controller 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다.
+election 서비스의 ElectionController.java
+```java
+ @RestController
+ public class ElectionController {
+
+    @Autowired
+    ElectionRepository electionRepository;
+
+    @RequestMapping(value = "elections/canVote",
+        method = RequestMethod.GET,
+        produces = "application/json;charset=UTF-8")
+    public boolean checkAndBookStock(HttpServletRequest request, HttpServletResponse response) {{
+        System.out.println("##### /elections/canVote  called #####");
+
+        Long electionId = Long.valueOf(request.getParameter("electionId"));
+        Optional<Election> election = electionRepository.findById(electionId);
+        if(election.isPresent()){
+            Election electionValue = election.get();
+            LocalDate now = LocalDate.now();
+            LocalDate startDate = electionValue.getVotingDay().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            LocalDate endDate = startDate.plusDays(electionValue.getVotingPeriod());
+            if(startDate.isAfter(now) && endDate.isBefore(now)) return true;
+            return false;
+        }else{
+            return false;
+        }
+    }
+
+ }
+
+vote 서비스의 ElectionService.java
+```java
+@FeignClient(name="election", url="http://${api.url.election}:8080")
+public interface ElectionService {
+
+    @RequestMapping(method= RequestMethod.GET, path="/elections/canVote")
+    public boolean canVote(@RequestParam Long electionId);
+
+}
+```
+
+vote 서비스의 Vote.java
+
+```java
+@Entity
+@Table(name="Vote")
+public class Vote {
+
+    @Id
+    @GeneratedValue(strategy=GenerationType.AUTO)
+    private Long id;
+    private Long electionId;
+    private Long candidateId;
+    private String voterId;
+    private Date votingDate;
+
+    @PostPersist
+    public void onPostPersist() throws Exception {
+
+        // 선거 가능 기간 여부 확인
+        if(VoteApplication.applicationContext.getBean(omp.external.ElectionService.class)
+            .canVote(electionId)){
+                Voted voted = new Voted();
+                BeanUtils.copyProperties(this, voted);
+                voted.publishAfterCommit();
+            }else{
+                throw new Exception("Not Voting Day.");
+            }
+
+
+    }
+    /** 생략 **/
+}
+
 ```

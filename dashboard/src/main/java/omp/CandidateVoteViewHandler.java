@@ -50,7 +50,8 @@ public class CandidateVoteViewHandler {
             if( candidateVoteOptional.isPresent()) {
                 CandidateVote candidateVote = candidateVoteOptional.get();
                 // view 객체에 이벤트의 eventDirectValue 를 set 함
-                    candidateVote.setVotes(candidateVote.getVotes() + 1);
+                    int voteCount = candidateVote.getVotes() == null ? 0 : candidateVote.getVotes();
+                    candidateVote.setVotes(voteCount + 1);
                 // view 레파지 토리에 save
                 candidateVoteRepository.save(candidateVote);
             }
