@@ -1,5 +1,7 @@
 package omp;
 
+import java.util.Date;
+
 public class ElectionCreated extends AbstractEvent {
 
     private Long id;

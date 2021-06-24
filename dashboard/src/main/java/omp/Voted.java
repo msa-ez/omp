@@ -1,10 +1,12 @@
 package omp;
 
+import java.util.Date;
+
 public class Voted extends AbstractEvent {
 
     private Long id;
     private Long candidateId;
-    private String voterId;
+    private Long voterId;
     private Date votingDate;
 
     public Long getId() {
@@ -21,11 +23,11 @@ public class Voted extends AbstractEvent {
     public void setCandidateId(Long candidateId) {
         this.candidateId = candidateId;
     }
-    public String getVoterId() {
+    public Long getVoterId() {
         return voterId;
     }
 
-    public void setVoterId(String voterId) {
+    public void setVoterId(Long voterId) {
         this.voterId = voterId;
     }
     public Date getVotingDate() {

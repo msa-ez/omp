@@ -26,7 +26,7 @@ public class MyVoteViewHandler {
             // view 객체 생성
             MyVote myVote = new MyVote();
             // view 객체에 이벤트의 Value 를 set 함
-            myVote.setId(voted.getId());
+            myVote.setVoteId(voted.getId());
             myVote.setCandidateId(voted.getCandidateId());
             myVote.setVoterId(voted.getVoterId());
             myVote.setVotingDate(voted.getVotingDate());

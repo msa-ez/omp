@@ -10,7 +10,7 @@ public class CandidateVote {
         @Id
         @GeneratedValue(strategy=GenerationType.AUTO)
         private Long candidateId;
-        private String electionId;
+        private Long electionId;
         private Integer no;
         private String party;
         private String name;
@@ -25,11 +25,11 @@ public class CandidateVote {
         public void setCandidateId(Long candidateId) {
             this.candidateId = candidateId;
         }
-        public String getElectionId() {
+        public Long getElectionId() {
             return electionId;
         }
 
-        public void setElectionId(String electionId) {
+        public void setElectionId(Long electionId) {
             this.electionId = electionId;
         }
         public Integer getNo() {
