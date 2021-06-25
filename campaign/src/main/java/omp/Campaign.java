@@ -9,6 +9,10 @@ import java.util.Date;
 @Table(name="Campaign_table")
 public class Campaign {
 
+
+
+
+    
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;

@@ -42,7 +42,7 @@
 * 선관위는 선택한 선거에 한 명의 대선 후보를 등록한다.
 * 대선 후보는 공약을 추가한다.
 * 대선 후보는 공약을 삭제한다.
-* 투표자는 단 한 명의 후보에게 투표를 할 수 있다.
+* 투표자는 선거와 후보를 선택하여 투표를 한다.
 * 관리자는 후보 별 투표 현황을 확인 할 수 있다.
 
 ## 비기능적 요구사항
@@ -324,7 +324,7 @@ election 서비스의 ElectionController.java
     @RequestMapping(value = "elections/canVote",
         method = RequestMethod.GET,
         produces = "application/json;charset=UTF-8")
-    public boolean checkAndBookStock(HttpServletRequest request, HttpServletResponse response) {{
+    public boolean canVote(HttpServletRequest request, HttpServletResponse response) {{
         System.out.println("##### /elections/canVote  called #####");
 
         Long electionId = Long.valueOf(request.getParameter("electionId"));
@@ -760,9 +760,8 @@ livenessProbe:
   failureThreshold: 5
 ```
 
-- port 및 path 잘못된 값으로 변경 후, retry 시도 확인 (in booking 서비스)  
+- port 및 path 잘못된 값으로 변경 후, retry 시도 확인 
     - vote deploy yml 수정  
-        ![selfhealing(liveness)-세팅변경]
         ```yml
           livenessProbe:
             httpGet:
